@@ -1,0 +1,49 @@
+name: Monitor Developer Page
+
+on:
+  schedule:
+    # Run every 4 hours
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+    # Allow manual trigger from GitHub UI
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore previous hash
+        uses: actions/cache@v4
+        with:
+          path: last_hash.txt
+          key: page-hash-${{ github.run_id }}
+          restore-keys: page-hash-
+
+      - name: Run monitor
+        env:
+          MONITOR_URL: ${{ secrets.MONITOR_URL }}
+          CHECK_SELECTOR: ${{ secrets.CHECK_SELECTOR }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
+          EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
+        run: python main.py
+
+      - name: Save hash for next run
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: last_hash.txt
+          key: page-hash-${{ github.run_id }}
